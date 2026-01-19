@@ -21,8 +21,12 @@ async function init() {
     return;
   }
   showLoading(true);
-  await pullFromGitHub();
+  const result = await pullFromGitHub();
   showLoading(false);
+  if (!result.success && result.error) {
+    // Show error but still proceed to main screen
+    showToast('Sync: ' + result.error, 'error');
+  }
   showMain();
   renderUI();
   if (pendingShare) {
@@ -87,7 +91,7 @@ function showToast(message, type = '') {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   toast.className = 'toast visible ' + type;
-  setTimeout(() => toast.classList.remove('visible'), 3000);
+  setTimeout(() => toast.classList.remove('visible'), 5000); // Extended to 5s for reading errors
 }
 
 function renderUI() {
@@ -307,6 +311,8 @@ function debouncedSync() {
     pushToGitHub().then(result => {
       if (result.success) {
         updateSyncStatus();
+      } else {
+        showToast('Auto-sync failed: ' + result.error, 'error');
       }
     });
   }, 2000);
@@ -349,7 +355,8 @@ async function pullFromGitHub() {
     saveLocal();
     return { success: true };
   } catch (e) {
-    if (e.message.includes('404')) {
+    if (e.message.includes('404') || e.message.includes('Not Found')) {
+      // No data file yet - that's OK, we'll create it on first sync
       loadLocal();
       return { success: true };
     }
@@ -367,7 +374,9 @@ async function pushToGitHub() {
         `${GITHUB_API}/repos/${settings.owner}/${settings.repo}/contents/${DATA_PATH}?ref=${settings.branch || 'main'}`
       );
       sha = existing.sha;
-    } catch (e) {}
+    } catch (e) {
+      // File doesn't exist yet, that's fine
+    }
     const exportData = {
       version: 2,
       lastUpdated: new Date().toISOString(),
@@ -395,14 +404,20 @@ async function pushToGitHub() {
 
 async function fullSync() {
   showLoading(true);
-  await pullFromGitHub();
-  const result = await pushToGitHub();
+  const pullResult = await pullFromGitHub();
+  if (!pullResult.success) {
+    showLoading(false);
+    showToast('Pull failed: ' + pullResult.error, 'error');
+    renderUI();
+    return;
+  }
+  const pushResult = await pushToGitHub();
   showLoading(false);
   renderUI();
-  if (result.success) {
+  if (pushResult.success) {
     showToast('Synced!', 'success');
   } else {
-    showToast('Sync failed: ' + result.error, 'error');
+    showToast('Push failed: ' + pushResult.error, 'error');
   }
 }
 
@@ -423,16 +438,16 @@ function mergeData(local, remote) {
       merged.videos[id] = remote.videos[id];
     } else {
       // Merge video data
-      const local = merged.videos[id];
+      const local_v = merged.videos[id];
       const remote_v = remote.videos[id];
       
       // Take the most recent read state
       if (remote_v.read !== undefined) {
-        local.read = local.read || remote_v.read;
+        local_v.read = local_v.read || remote_v.read;
       }
       
       // Merge notes
-      const localNotes = local.notes || [];
+      const localNotes = local_v.notes || [];
       const remoteNotes = remote_v.notes || [];
       const noteKey = n => `${n.time}-${n.text}`;
       const localKeys = new Set(localNotes.map(noteKey));
@@ -442,7 +457,7 @@ function mergeData(local, remote) {
         }
       });
       localNotes.sort((a, b) => a.time - b.time);
-      local.notes = localNotes;
+      local_v.notes = localNotes;
     }
   }
   return merged;
@@ -510,9 +525,30 @@ async function githubRequest(url, method = 'GET', body = null) {
   const response = await fetch(url, options);
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const msg = error.message || `HTTP ${response.status}`;
+    throw new Error(msg);
   }
   return response.json();
+}
+
+async function testConnection() {
+  // First test: can we authenticate at all?
+  try {
+    const user = await githubRequest(`${GITHUB_API}/user`);
+    return { success: true, username: user.login };
+  } catch (e) {
+    return { success: false, error: 'Auth failed: ' + e.message };
+  }
+}
+
+async function testRepoAccess() {
+  // Second test: can we access the repo?
+  try {
+    await githubRequest(`${GITHUB_API}/repos/${settings.owner}/${settings.repo}`);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: `Repo access failed: ${settings.owner}/${settings.repo} - ${e.message}` };
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -521,22 +557,42 @@ document.getElementById('setup-save').addEventListener('click', async () => {
   const token = document.getElementById('setup-token').value.trim();
   const owner = document.getElementById('setup-owner').value.trim();
   const repo = document.getElementById('setup-repo').value.trim() || 'pwa';
+  
   if (!token || !owner) {
     showToast('Please enter token and owner', 'error');
     return;
   }
+  
   settings = { token, owner, repo, branch: 'main' };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  
   showLoading(true);
+  
+  // Test authentication first
+  const authTest = await testConnection();
+  if (!authTest.success) {
+    showLoading(false);
+    showToast(authTest.error, 'error');
+    localStorage.removeItem(STORAGE_KEY);
+    return;
+  }
+  
+  // Test repo access
+  const repoTest = await testRepoAccess();
+  if (!repoTest.success) {
+    showLoading(false);
+    showToast(repoTest.error, 'error');
+    localStorage.removeItem(STORAGE_KEY);
+    return;
+  }
+  
+  // Now try to pull data
   const result = await pullFromGitHub();
   showLoading(false);
-  if (result.success) {
-    showMain();
-    renderUI();
-    showToast('Connected!', 'success');
-  } else {
-    showToast('Connection failed: ' + result.error, 'error');
-  }
+  
+  showMain();
+  renderUI();
+  showToast(`Connected as ${authTest.username}!`, 'success');
 });
 
 document.getElementById('settings-btn').addEventListener('click', (e) => {
