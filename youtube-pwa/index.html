@@ -200,14 +200,24 @@
       overflow: hidden;
     }
     .video-item {
-      display: flex;
-      align-items: center;
-      padding: 12px 15px;
       border-bottom: 1px solid #333;
-      gap: 10px;
     }
     .video-item:last-child {
       border-bottom: none;
+    }
+    .video-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 15px;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .video-item.read .video-header {
+      opacity: 0.5;
+    }
+    .video-item.expanded .video-header {
+      opacity: 1;
+      background: #333;
     }
     .video-info {
       flex: 1;
@@ -233,13 +243,119 @@
       color: #666;
       margin-top: 2px;
     }
-    .video-delete {
+    .video-status {
+      font-size: 16px;
+      padding: 5px;
+    }
+    .video-expand {
+      color: #666;
+      font-size: 14px;
+      transition: transform 0.2s;
+    }
+    .video-item.expanded .video-expand {
+      transform: rotate(180deg);
+    }
+    .video-details {
+      display: none;
+      padding: 0 15px 15px 15px;
+      background: #333;
+    }
+    .video-item.expanded .video-details {
+      display: block;
+    }
+    .video-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .video-actions button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-read {
+      background: #1b5e20;
+      color: #fff;
+    }
+    .btn-read.is-read {
+      background: #444;
+      color: #aaa;
+    }
+    .btn-watch {
+      background: #c62828;
+      color: #fff;
+    }
+    .btn-delete {
+      background: #333;
+      color: #888;
+      flex: 0 0 auto;
+      padding: 10px 15px;
+    }
+    .note-input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .note-input {
+      flex: 1;
+      padding: 10px;
+      background: #282828;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+    }
+    .note-input::placeholder {
+      color: #666;
+    }
+    .btn-add-note {
+      background: #3ea6ff;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 15px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .notes-list {
+      margin-top: 10px;
+    }
+    .notes-label {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .note-item {
+      background: #282828;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      line-height: 1.4;
+      position: relative;
+    }
+    .note-item:last-child {
+      margin-bottom: 0;
+    }
+    .note-time {
+      color: #3ea6ff;
+      font-size: 11px;
+      margin-right: 8px;
+    }
+    .note-delete {
+      position: absolute;
+      right: 5px;
+      top: 5px;
       background: none;
       border: none;
       color: #666;
-      font-size: 18px;
-      padding: 5px 10px;
       cursor: pointer;
+      padding: 2px 6px;
+      font-size: 14px;
     }
     .empty-state {
       padding: 30px;
@@ -303,6 +419,24 @@
     }
     .toast.success { background: #1b5e20; }
     .toast.error { background: #b71c1c; }
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .filter-btn {
+      background: #333;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .filter-btn.active {
+      background: #444;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -350,18 +484,23 @@
       <button class="tab active" data-tab="history">History</button>
       <button class="tab" data-tab="notes">With Notes</button>
     </div>
+    <div class="filter-row">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="unread">Unread</button>
+      <button class="filter-btn" data-filter="read">Read</button>
+    </div>
     <div class="stats">
       <div class="stat">
         <div class="stat-value" id="watch-count">0</div>
-        <div class="stat-label">Watched</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="unread-count">0</div>
+        <div class="stat-label">Unread</div>
       </div>
       <div class="stat">
         <div class="stat-value" id="notes-count">0</div>
         <div class="stat-label">With Notes</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" id="total-notes">0</div>
-        <div class="stat-label">Notes</div>
       </div>
     </div>
     <div id="video-list" class="video-list">

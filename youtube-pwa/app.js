@@ -1,4 +1,4 @@
-// YouTube Notes PWA
+// YouTube Notes PWA - v2 with mark-as-read and inline notes
 
 const GITHUB_API = 'https://api.github.com';
 const DATA_PATH = 'youtube/data.json';
@@ -8,7 +8,10 @@ const DATA_KEY = 'yt-notes-data';
 let settings = {};
 let appData = { watchHistory: [], videos: {} };
 let currentTab = 'history';
+let currentFilter = 'all';
+let expandedVideoId = null;
 let pendingShare = null;
+let syncTimeout = null;
 
 async function init() {
   settings = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
@@ -96,22 +99,25 @@ function renderUI() {
 function renderStats() {
   const history = appData.watchHistory || [];
   let withNotes = 0;
-  let totalNotes = 0;
-  for (const id in appData.videos) {
-    const notes = appData.videos[id].notes || [];
-    if (notes.length > 0) {
-      withNotes++;
-      totalNotes += notes.length;
+  let unread = 0;
+  for (const h of history) {
+    const v = appData.videos[h.videoId];
+    if (v) {
+      if ((v.notes || []).length > 0) withNotes++;
+      if (!v.read) unread++;
+    } else {
+      unread++;
     }
   }
   document.getElementById('watch-count').textContent = history.length;
+  document.getElementById('unread-count').textContent = unread;
   document.getElementById('notes-count').textContent = withNotes;
-  document.getElementById('total-notes').textContent = totalNotes;
 }
 
 function renderList() {
   const list = document.getElementById('video-list');
   let videos = [];
+  
   if (currentTab === 'history') {
     videos = (appData.watchHistory || []).map(h => ({
       ...h,
@@ -130,32 +136,180 @@ function renderList() {
       return bLast.localeCompare(aLast);
     });
   }
+  
+  // Apply filter
+  if (currentFilter === 'unread') {
+    videos = videos.filter(v => !v.read);
+  } else if (currentFilter === 'read') {
+    videos = videos.filter(v => v.read);
+  }
+  
   if (videos.length === 0) {
-    list.innerHTML = `<div class="empty-state">${currentTab === 'history' ? 'No videos watched yet' : 'No videos with notes'}</div>`;
+    const emptyMsg = currentFilter === 'unread' ? 'All caught up! 🎉' : 
+                     currentFilter === 'read' ? 'No read videos' :
+                     currentTab === 'history' ? 'No videos watched yet' : 'No videos with notes';
+    list.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
     return;
   }
+  
   list.innerHTML = videos.map(v => {
     const notesCount = v.notes?.length || 0;
+    const isRead = v.read || false;
+    const isExpanded = expandedVideoId === v.videoId;
+    const notes = v.notes || [];
+    
     return `
-      <div class="video-item" data-id="${v.videoId}">
-        <div class="video-info">
-          <div class="video-title"><a href="https://youtube.com/watch?v=${v.videoId}" target="_blank">${v.title || v.videoId}</a></div>
-          <div class="video-channel">${v.channel || ''}</div>
-          <div class="video-meta">
-            ${v.timestamp ? formatDate(v.timestamp) : ''}
-            ${notesCount > 0 ? ` • ${notesCount} note${notesCount !== 1 ? 's' : ''}` : ''}
+      <div class="video-item ${isRead ? 'read' : ''} ${isExpanded ? 'expanded' : ''}" data-id="${v.videoId}">
+        <div class="video-header">
+          <div class="video-status">${isRead ? '✓' : '○'}</div>
+          <div class="video-info">
+            <div class="video-title">${v.title || v.videoId}</div>
+            <div class="video-channel">${v.channel || ''}</div>
+            <div class="video-meta">
+              ${v.timestamp ? formatDate(v.timestamp) : ''}
+              ${notesCount > 0 ? ` • ${notesCount} note${notesCount !== 1 ? 's' : ''}` : ''}
+            </div>
           </div>
+          <div class="video-expand">▼</div>
         </div>
-        <button class="video-delete" data-id="${v.videoId}">×</button>
+        <div class="video-details">
+          <div class="video-actions">
+            <button class="btn-read ${isRead ? 'is-read' : ''}" data-action="toggle-read" data-id="${v.videoId}">
+              ${isRead ? '✓ Read' : '○ Mark Read'}
+            </button>
+            <button class="btn-watch" data-action="watch" data-id="${v.videoId}">▶ Watch</button>
+            <button class="btn-delete" data-action="delete" data-id="${v.videoId}">🗑</button>
+          </div>
+          <div class="note-input-row">
+            <input type="text" class="note-input" placeholder="Add a note..." data-id="${v.videoId}">
+            <button class="btn-add-note" data-action="add-note" data-id="${v.videoId}">Add</button>
+          </div>
+          ${notes.length > 0 ? `
+            <div class="notes-list">
+              <div class="notes-label">Notes:</div>
+              ${notes.map((n, i) => `
+                <div class="note-item">
+                  <span class="note-time">${n.timeStr || '0:00'}</span>
+                  ${n.text}
+                  <button class="note-delete" data-action="delete-note" data-id="${v.videoId}" data-index="${i}">×</button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
       </div>
     `;
   }).join('');
-  list.querySelectorAll('.video-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteVideo(btn.dataset.id);
+  
+  // Attach event listeners
+  list.querySelectorAll('.video-header').forEach(header => {
+    header.addEventListener('click', (e) => {
+      const id = header.parentElement.dataset.id;
+      toggleExpand(id);
     });
   });
+  
+  list.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', handleAction);
+  });
+  
+  list.querySelectorAll('.note-input').forEach(input => {
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addNoteToVideo(input.dataset.id, input.value);
+        input.value = '';
+      }
+    });
+  });
+}
+
+function toggleExpand(videoId) {
+  expandedVideoId = expandedVideoId === videoId ? null : videoId;
+  renderList();
+}
+
+function handleAction(e) {
+  e.stopPropagation();
+  const action = e.target.dataset.action;
+  const videoId = e.target.dataset.id;
+  
+  switch(action) {
+    case 'toggle-read':
+      toggleRead(videoId);
+      break;
+    case 'watch':
+      window.open(`https://youtube.com/watch?v=${videoId}`, '_blank');
+      break;
+    case 'delete':
+      if (confirm('Delete this video?')) {
+        deleteVideo(videoId);
+      }
+      break;
+    case 'add-note':
+      const input = document.querySelector(`.note-input[data-id="${videoId}"]`);
+      if (input && input.value.trim()) {
+        addNoteToVideo(videoId, input.value);
+        input.value = '';
+      }
+      break;
+    case 'delete-note':
+      const index = parseInt(e.target.dataset.index);
+      deleteNote(videoId, index);
+      break;
+  }
+}
+
+function toggleRead(videoId) {
+  if (!appData.videos[videoId]) {
+    appData.videos[videoId] = { videoId };
+  }
+  appData.videos[videoId].read = !appData.videos[videoId].read;
+  saveLocal();
+  renderUI();
+  debouncedSync();
+}
+
+function addNoteToVideo(videoId, text) {
+  if (!text.trim()) return;
+  
+  if (!appData.videos[videoId]) {
+    appData.videos[videoId] = { videoId, notes: [] };
+  }
+  if (!appData.videos[videoId].notes) {
+    appData.videos[videoId].notes = [];
+  }
+  
+  appData.videos[videoId].notes.push({
+    time: 0,
+    timeStr: '0:00',
+    text: text.trim(),
+    created: new Date().toISOString()
+  });
+  
+  saveLocal();
+  renderUI();
+  showToast('Note added', 'success');
+  debouncedSync();
+}
+
+function deleteNote(videoId, index) {
+  if (appData.videos[videoId]?.notes) {
+    appData.videos[videoId].notes.splice(index, 1);
+    saveLocal();
+    renderUI();
+    debouncedSync();
+  }
+}
+
+function debouncedSync() {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    pushToGitHub().then(result => {
+      if (result.success) {
+        updateSyncStatus();
+      }
+    });
+  }, 2000);
 }
 
 function formatDate(isoString) {
@@ -215,7 +369,7 @@ async function pushToGitHub() {
       sha = existing.sha;
     } catch (e) {}
     const exportData = {
-      version: 1,
+      version: 2,
       lastUpdated: new Date().toISOString(),
       watchHistory: appData.watchHistory,
       videos: appData.videos
@@ -268,8 +422,18 @@ function mergeData(local, remote) {
     if (!merged.videos[id]) {
       merged.videos[id] = remote.videos[id];
     } else {
-      const localNotes = merged.videos[id].notes || [];
-      const remoteNotes = remote.videos[id].notes || [];
+      // Merge video data
+      const local = merged.videos[id];
+      const remote_v = remote.videos[id];
+      
+      // Take the most recent read state
+      if (remote_v.read !== undefined) {
+        local.read = local.read || remote_v.read;
+      }
+      
+      // Merge notes
+      const localNotes = local.notes || [];
+      const remoteNotes = remote_v.notes || [];
       const noteKey = n => `${n.time}-${n.text}`;
       const localKeys = new Set(localNotes.map(noteKey));
       remoteNotes.forEach(rn => {
@@ -278,7 +442,7 @@ function mergeData(local, remote) {
         }
       });
       localNotes.sort((a, b) => a.time - b.time);
-      merged.videos[id].notes = localNotes;
+      local.notes = localNotes;
     }
   }
   return merged;
@@ -307,7 +471,8 @@ function addVideo(videoId, title, channel, note) {
       channel: channel || '',
       url: `https://youtube.com/watch?v=${videoId}`,
       timestamp: now,
-      notes: []
+      notes: [],
+      read: false
     };
   }
   if (note && note.trim()) {
@@ -325,7 +490,9 @@ function deleteVideo(videoId) {
   appData.watchHistory = appData.watchHistory.filter(h => h.videoId !== videoId);
   delete appData.videos[videoId];
   saveLocal();
+  expandedVideoId = null;
   renderUI();
+  debouncedSync();
 }
 
 async function githubRequest(url, method = 'GET', body = null) {
@@ -390,6 +557,17 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     currentTab = tab.dataset.tab;
+    expandedVideoId = null;
+    renderList();
+  });
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    expandedVideoId = null;
     renderList();
   });
 });
