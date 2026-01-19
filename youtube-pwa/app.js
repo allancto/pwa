@@ -12,10 +12,15 @@ let currentFilter = 'all';
 let expandedVideoId = null;
 let pendingShare = null;
 let syncTimeout = null;
+let toastTimeout = null;
 
 async function init() {
   settings = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
   checkShareIntent();
+  
+  // Wire up toast close button
+  document.getElementById('toast-close').addEventListener('click', hideToast);
+  
   if (!settings.token || !settings.owner) {
     showSetup();
     return;
@@ -89,9 +94,29 @@ function hideSharePanel() {
 
 function showToast(message, type = '') {
   const toast = document.getElementById('toast');
-  toast.textContent = message;
+  const msgEl = document.getElementById('toast-msg');
+  msgEl.textContent = message;
   toast.className = 'toast visible ' + type;
-  setTimeout(() => toast.classList.remove('visible'), 5000); // Extended to 5s for reading errors
+  
+  // Clear any existing timeout
+  if (toastTimeout) {
+    clearTimeout(toastTimeout);
+    toastTimeout = null;
+  }
+  
+  // Auto-hide success messages after 3s, errors stay until dismissed
+  if (type === 'success') {
+    toastTimeout = setTimeout(hideToast, 3000);
+  }
+}
+
+function hideToast() {
+  const toast = document.getElementById('toast');
+  toast.classList.remove('visible');
+  if (toastTimeout) {
+    clearTimeout(toastTimeout);
+    toastTimeout = null;
+  }
 }
 
 function renderUI() {
