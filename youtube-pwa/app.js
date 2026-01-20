@@ -1,5 +1,12 @@
 // YouTube Notes PWA - v2 with mark-as-read and inline notes
 
+// Register service worker for PWA install and share target
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/pwa/youtube-pwa/sw.js')
+    .then(reg => console.log('SW registered:', reg.scope))
+    .catch(err => console.log('SW registration failed:', err));
+}
+
 const GITHUB_API = 'https://api.github.com';
 const DATA_PATH = 'youtube/data.json';
 const STORAGE_KEY = 'yt-notes-settings';
