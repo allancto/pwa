@@ -1,6 +1,28 @@
 {
   "version": 2,
-  "lastUpdated": "2026-01-19T22:50:36.065Z",
-  "watchHistory": [],
-  "videos": {}
+  "lastUpdated": "2026-01-20T19:53:24.737Z",
+  "watchHistory": [
+    {
+      "videoId": "_gPODg6br5w",
+      "timestamp": "2026-01-20T19:53:24.434Z"
+    }
+  ],
+  "videos": {
+    "_gPODg6br5w": {
+      "videoId": "_gPODg6br5w",
+      "title": "They Ignored My Tool Stack and Built Something Better--The 4 Patterns Th...",
+      "channel": "",
+      "url": "https://youtube.com/watch?v=_gPODg6br5w",
+      "timestamp": "2026-01-20T19:53:24.434Z",
+      "notes": [
+        {
+          "time": 0,
+          "timeStr": "0:00",
+          "text": "If software dev is free then the pattern can be reprogrammed anywhere",
+          "created": "2026-01-20T19:53:24.434Z"
+        }
+      ],
+      "read": false
+    }
+  }
 }
