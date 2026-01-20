@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" status)",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" add Docs/README.md)",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" commit -m \"$\\(cat <<''EOF''\nAdd Docs folder for PWA apps publication\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" push -u origin stupefied-shamir)",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" checkout main)",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" pull origin main)",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" merge stupefied-shamir)",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" push origin main)",
+      "Bash(git -C \"C:\\\\dev\\\\pwa\" pull origin main)",
+      "Bash(git -C \"C:\\\\dev\\\\pwa\" merge stupefied-shamir)",
+      "Bash(git -C \"C:\\\\dev\\\\pwa\" push origin main)",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" add Docs/android-accessibility-service.md)",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" commit -m \"$\\(cat <<''EOF''\nAdd docs for Android Accessibility Service approach\n\nDocuments a potential future feature to automatically capture\nYouTube videos being watched using an Android Accessibility Service.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"C:\\\\Users\\\\Dad\\\\.claude-worktrees\\\\pwa\\\\stupefied-shamir\" push)",
+      "mcp__github__create_pull_request",
+      "mcp__github__update_issue",
+      "Bash(git mv:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git -C \"C:\\\\dev\\\\pwa\" fetch origin)",
+      "Bash(git -C \"C:\\\\dev\\\\pwa\" pull origin main --rebase)",
+      "Bash(git add:*)"
+    ]
+  }
+}

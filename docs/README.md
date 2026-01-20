@@ -1,1 +1,1 @@
-Folder for publishing pwa apps
+Folder for pwa apps for publication
