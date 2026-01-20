@@ -379,7 +379,7 @@ function updateSyncStatus() {
 async function pullFromGitHub() {
   try {
     const response = await githubRequest(
-      `${GITHUB_API}/repos/${settings.owner}/${settings.repo}/contents/${DATA_PATH}?ref=${settings.branch || 'main'}`
+      `${GITHUB_API}/repos/${settings.owner}/${settings.repo}/contents/${DATA_PATH}?ref=${settings.branch || 'master'}`
     );
     const content = atob(response.content);
     const remoteData = JSON.parse(content);
@@ -403,7 +403,7 @@ async function pushToGitHub() {
     let sha = null;
     try {
       const existing = await githubRequest(
-        `${GITHUB_API}/repos/${settings.owner}/${settings.repo}/contents/${DATA_PATH}?ref=${settings.branch || 'main'}`
+        `${GITHUB_API}/repos/${settings.owner}/${settings.repo}/contents/${DATA_PATH}?ref=${settings.branch || 'master'}`
       );
       sha = existing.sha;
     } catch (e) {
@@ -422,7 +422,7 @@ async function pushToGitHub() {
       {
         message: `Sync YouTube data - ${new Date().toISOString()}`,
         content: btoa(unescape(encodeURIComponent(content))),
-        branch: settings.branch || 'main',
+        branch: settings.branch || 'master',
         ...(sha && { sha })
       }
     );
@@ -472,12 +472,24 @@ function mergeData(local, remote) {
       // Merge video data
       const local_v = merged.videos[id];
       const remote_v = remote.videos[id];
-      
+
+      // Preserve fields from remote that local might not have
+      if (remote_v.duration && !local_v.duration) {
+        local_v.duration = remote_v.duration;
+        local_v.durationStr = remote_v.durationStr;
+      }
+      if (remote_v.title && !local_v.title) {
+        local_v.title = remote_v.title;
+      }
+      if (remote_v.channel && !local_v.channel) {
+        local_v.channel = remote_v.channel;
+      }
+
       // Take the most recent read state
       if (remote_v.read !== undefined) {
         local_v.read = local_v.read || remote_v.read;
       }
-      
+
       // Merge notes
       const localNotes = local_v.notes || [];
       const remoteNotes = remote_v.notes || [];
@@ -588,14 +600,15 @@ document.addEventListener('DOMContentLoaded', init);
 document.getElementById('setup-save').addEventListener('click', async () => {
   const token = document.getElementById('setup-token').value.trim();
   const owner = document.getElementById('setup-owner').value.trim();
-  const repo = document.getElementById('setup-repo').value.trim() || 'pwa';
-  
+  const repo = document.getElementById('setup-repo').value.trim() || 'clodcode';
+  const branch = document.getElementById('setup-branch').value.trim() || 'master';
+
   if (!token || !owner) {
     showToast('Please enter token and owner', 'error');
     return;
   }
-  
-  settings = { token, owner, repo, branch: 'main' };
+
+  settings = { token, owner, repo, branch };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   
   showLoading(true);
