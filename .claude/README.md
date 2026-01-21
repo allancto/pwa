@@ -4,9 +4,21 @@ This folder contains project context files for Claude Code sessions.
 
 ## Starting a New Session
 
-**Copy-paste the content from `NEW_SESSION_TEMPLATE_PWA.md` at the start of any new Claude Code session.**
+### Option 1: Magic Phrase (Easiest!)
+Just say to Claude:
+```
+Load PWA project context
+```
 
-This will give Claude instant context about the YouTube Notes PWA project.
+Claude will read all project files and be ready to work!
+
+### Option 2: Copy-Paste Template
+Copy-paste the content from `NEW_SESSION_TEMPLATE_PWA.md` at the start of any new Claude Code session.
+
+### Option 3: One-Line Command
+```
+Read .claude/pwa-youtube-notes-context.md, .claude/NEW_SESSION_TEMPLATE_PWA.md, docs/youtube-pwa-enhancements-2026-01-21.md, and CLAUDE.md then confirm understanding
+```
 
 ## Files in this Folder
 
