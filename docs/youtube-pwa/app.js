@@ -7,6 +7,7 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.log('SW registration failed:', err));
 }
 
+const APP_VERSION = '1.1.0'; // 2026-01-21: FAB, URL panel, clickable timestamps
 const GITHUB_API = 'https://api.github.com';
 const DATA_PATH = 'youtube/data.json';
 const STORAGE_KEY = 'yt-notes-settings';
@@ -83,6 +84,7 @@ function showSetup() {
 function showMain() {
   document.getElementById('setup').classList.remove('visible');
   document.getElementById('main').classList.add('visible');
+  document.getElementById('app-version').textContent = `v${APP_VERSION}`;
 }
 
 function showSharePanel(share) {
