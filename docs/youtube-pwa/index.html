@@ -27,14 +27,14 @@
       font-size: 20px;
       margin: 0 0 15px 0;
       display: flex;
-      align-items: center;
+      align-items: baseline;
       gap: 10px;
     }
     h1 span { font-size: 24px; }
     .app-version {
       font-size: 15px;
       color: #fff;
-      font-weight: normal;
+      font-weight: 600;
       margin-left: -5px;
     }
     .header-actions {
@@ -343,19 +343,29 @@
       font-size: 13px;
       line-height: 1.4;
       position: relative;
+      padding-right: 30px;
     }
     .note-item:last-child {
       margin-bottom: 0;
     }
     .note-time {
+      display: inline-block;
       color: #3ea6ff;
-      font-size: 11px;
-      margin-right: 8px;
-      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 8px;
+      margin: -4px 4px -4px -4px;
+      border-radius: 4px;
+      background: #333;
       text-decoration: none;
+      min-width: 44px;
+      text-align: center;
     }
     .note-time:hover {
-      text-decoration: underline;
+      background: #444;
+    }
+    .note-time:active {
+      background: #3ea6ff;
+      color: #000;
     }
     .note-delete {
       position: absolute;
