@@ -7,7 +7,7 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.log('SW registration failed:', err));
 }
 
-const APP_VERSION = '1.1.0'; // 2026-01-21: FAB, URL panel, clickable timestamps
+const APP_VERSION = '1.1.1'; // 2026-01-23: Clickable timestamps now work
 const GITHUB_API = 'https://api.github.com';
 const DATA_PATH = 'youtube/data.json';
 const STORAGE_KEY = 'yt-notes-settings';
@@ -227,7 +227,7 @@ function renderList() {
               <div class="notes-label">Notes:</div>
               ${notes.map((n, i) => `
                 <div class="note-item">
-                  <span class="note-time">${n.timeStr || '0:00'}</span>
+                  <a href="https://youtube.com/watch?v=${v.videoId}&t=${n.time || 0}" target="_blank" class="note-time">${n.timeStr || '0:00'}</a>
                   ${n.text}
                   <button class="note-delete" data-action="delete-note" data-id="${v.videoId}" data-index="${i}">×</button>
                 </div>
