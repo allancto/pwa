@@ -7,7 +7,7 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.log('SW registration failed:', err));
 }
 
-const APP_VERSION = '1.1.1'; // 2026-01-23: Clickable timestamps now work
+const APP_VERSION = '1.1.2'; // 2026-01-23: Hard refresh button
 const GITHUB_API = 'https://api.github.com';
 const DATA_PATH = 'youtube/data.json';
 const STORAGE_KEY = 'yt-notes-settings';
@@ -455,6 +455,26 @@ async function fullSync() {
   }
 }
 
+// Hard refresh: clear service worker cache and reload
+async function hardRefresh() {
+  showToast('Updating app...', '');
+  
+  // Clear all caches
+  if ('caches' in window) {
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map(name => caches.delete(name)));
+  }
+  
+  // Unregister service workers
+  if ('serviceWorker' in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map(reg => reg.unregister()));
+  }
+  
+  // Force reload from server
+  window.location.reload(true);
+}
+
 function mergeData(local, remote) {
   const merged = {
     watchHistory: [...(local.watchHistory || [])],
@@ -650,10 +670,32 @@ document.getElementById('settings-btn').addEventListener('click', (e) => {
   }
 });
 
-document.getElementById('refresh-btn').addEventListener('click', async (e) => {
+// Refresh button: tap = sync data, long press = hard refresh app
+let refreshPressTimer = null;
+const refreshBtn = document.getElementById('refresh-btn');
+
+refreshBtn.addEventListener('mousedown', startRefreshPress);
+refreshBtn.addEventListener('touchstart', startRefreshPress);
+refreshBtn.addEventListener('mouseup', endRefreshPress);
+refreshBtn.addEventListener('mouseleave', endRefreshPress);
+refreshBtn.addEventListener('touchend', endRefreshPress);
+
+function startRefreshPress(e) {
   e.preventDefault();
-  await fullSync();
-});
+  refreshPressTimer = setTimeout(() => {
+    refreshPressTimer = 'long';
+    hardRefresh();
+  }, 800); // Hold for 800ms for hard refresh
+}
+
+function endRefreshPress(e) {
+  e.preventDefault();
+  if (refreshPressTimer && refreshPressTimer !== 'long') {
+    clearTimeout(refreshPressTimer);
+    fullSync(); // Short tap = sync data
+  }
+  refreshPressTimer = null;
+}
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
