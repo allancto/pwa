@@ -7,7 +7,7 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.log('SW registration failed:', err));
 }
 
-const APP_VERSION = '1.1.2'; // 2026-01-23: Hard refresh button
+const APP_VERSION = '1.1.3'; // 2026-01-23: Remote titles always win on sync
 const GITHUB_API = 'https://api.github.com';
 const DATA_PATH = 'youtube/data.json';
 const STORAGE_KEY = 'yt-notes-settings';
@@ -495,16 +495,18 @@ function mergeData(local, remote) {
       const local_v = merged.videos[id];
       const remote_v = remote.videos[id];
 
-      // Preserve fields from remote that local might not have
+      // Always prefer remote title/channel (allows fixes to propagate)
+      if (remote_v.title) {
+        local_v.title = remote_v.title;
+      }
+      if (remote_v.channel) {
+        local_v.channel = remote_v.channel;
+      }
+
+      // Preserve duration from remote if local doesn't have it
       if (remote_v.duration && !local_v.duration) {
         local_v.duration = remote_v.duration;
         local_v.durationStr = remote_v.durationStr;
-      }
-      if (remote_v.title && !local_v.title) {
-        local_v.title = remote_v.title;
-      }
-      if (remote_v.channel && !local_v.channel) {
-        local_v.channel = remote_v.channel;
       }
 
       // Take the most recent read state
